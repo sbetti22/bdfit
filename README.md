@@ -15,7 +15,7 @@ After installation, install ```species``` [https://species.readthedocs.io/en/lat
 
 
 ## Requirements
-```bdfit``` primarily uses the ```species``` package.  Therefore, ```species``` and ```pymultinest``` are required to be installed.  
+```bdfit``` primarily uses the ```species``` package. Therefore, ```species``` and ```pymultinest``` are required to be installed.  
   - [species](https://species.readthedocs.io/en/latest/index.html)
   - [PyMultiNest](https://johannesbuchner.github.io/PyMultiNest/install.html#building-the-libraries)
   - numpy
