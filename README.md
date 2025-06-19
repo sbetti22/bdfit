@@ -6,7 +6,7 @@ author: Sarah Betti
 ## Installation 
 To use the module, download the python files above and install it with the following 
 
-```python setup.py```
+```python setup.py install```
 
 ## Requirements
 ```bdfit``` primarily uses the ```species``` package.  Therefore, ```species``` and ```pymultinest``` are required to be installed.  
