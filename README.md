@@ -11,7 +11,7 @@ $ cd bdfit
 $ python setup.py install
 ````
 
-After installation, install ```species``` [https://species.readthedocs.io/en/latest/index.html](https://species.readthedocs.io/en/latest/index.html)``` and ``PyMultiNest``` [https://johannesbuchner.github.io/PyMultiNest/install.html#building-the-libraries](https://johannesbuchner.github.io/PyMultiNest/install.html#building-the-libraries) following their specific installation instructions.
+After installation, install ```species``` [https://species.readthedocs.io/en/latest/index.html](https://species.readthedocs.io/en/latest/index.html)``` and ```PyMultiNest``` [https://johannesbuchner.github.io/PyMultiNest/install.html#building-the-libraries](https://johannesbuchner.github.io/PyMultiNest/install.html#building-the-libraries) following their specific installation instructions.
 
 
 ## Requirements
