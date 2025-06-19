@@ -4,9 +4,12 @@ bdbit is a spectral fitting routine for low resolution brown dwarf NIR spectra u
 author: Sarah Betti
 
 ## Installation 
-To use the module, download the python files above and install it with the following 
-
-```python setup.py install```
+To use the module, download or clone the repository above and install it with the following 
+```
+$ git clone [https://github.com/sbetti22/bdfit.git](https://github.com/sbetti22/bdfit.git)
+$ cd bdfit
+$ python setup.py install
+````
 
 ## Requirements
 ```bdfit``` primarily uses the ```species``` package.  Therefore, ```species``` and ```pymultinest``` are required to be installed.  
