@@ -26,7 +26,7 @@ setup(
     keywords='NIR spectral fitting',
     packages=find_packages(),
     install_requires=[
-        'numpy', 'scipy', 'astropy', 'matplotlib', 'species', 'pymultinest'
+        'numpy', 'scipy', 'astropy', 'matplotlib', 
     ],
     include_package_data=True,
     zip_safe=False
