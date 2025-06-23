@@ -1,7 +1,7 @@
 '''
 fitspec is a wrapper class for fitting and comparing spectra using the species package for low resolution NIR spectra.  
 
-written by: Sarah Betti 6-2025
+written by: Sarah Betti 06-2025
 
 '''
 
@@ -36,33 +36,45 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 class fitspec:
-    def __init__(self, OBJ_NAME, PARALLAX, PARALLAX_err, spec_res=500., model='bt-settl-cifist'):
+    def __init__(self, OBJ_NAME, PARALLAX, PARALLAX_err, specfile_full_name,
+                 specfile_short_name = None, save_name = None, 
+                 spec_res=500., model='bt-settl-cifist'):
         SpeciesInit()
         self.OBJ_NAME = OBJ_NAME
+        if save_name is not None:
+            self.savename = save_name 
+        else:
+            self.savename = OBJ_NAME
         self.PARALLAX = PARALLAX
         self.PARALLAX_err = PARALLAX_err
         self.spec_res = float(spec_res)
         self.model=model
+        self.specfile_short_name = specfile_short_name
+        self.specfile_full_name = specfile_full_name
 
         self.database = Database()
-        if os.path.exists(f'{OBJ_NAME}_R{int(spec_res)}_short.dat'):
-            self.database.add_object(OBJ_NAME,
-                                parallax=(PARALLAX, PARALLAX_err),
-                                app_mag=None,
-                                flux_density=None,
-                                spectrum={f'{OBJ_NAME}_short': (f'{OBJ_NAME}_R{int(spec_res)}_short.dat', None, spec_res),
-                                        f'{OBJ_NAME}_full': (f'{OBJ_NAME}_R{int(spec_res)}_full.dat', None, spec_res),},
-                                deredden=None)
+        if self.specfile_short_name is not None:
+            if os.path.exists(self.specfile_short_name):
+                self.database.add_object(OBJ_NAME,
+                                    parallax=(PARALLAX, PARALLAX_err),
+                                    app_mag=None,
+                                    flux_density=None,
+                                    spectrum={f'{OBJ_NAME}_short': (self.specfile_short_name, None, spec_res),
+                                            f'{OBJ_NAME}_full': (self.specfile_full_name, None, spec_res),},
+                                    deredden=None)
+            else:
+                raise ValueError(f'{self.specfile_short_name} does not exist. Please check your file name')
         else:
             self.database.add_object(OBJ_NAME,
                                 parallax=(PARALLAX, PARALLAX_err),
                                 app_mag=None,
                                 flux_density=None,
-                                spectrum={f'{OBJ_NAME}_full': (f'{OBJ_NAME}_R{int(spec_res)}_full.dat', None, spec_res),},
+                                spectrum={f'{OBJ_NAME}_full': (self.specfile_full_name, None, spec_res),},
                                 deredden=None)
         
     def compare_empirical_library(self, library, spec_length='short', wavel_range=(0.9,1.9),sptypes=['M'],  av_range =np.arange(0,5, 0.1), **kwargs):
-        #kwargs: xlim, ylim, flux_offset, label_pos
+        #kwargs: xlim, ylim, flux_offset, label_pos, figsize
+        figsize=kwargs.get('figsize', (4, 3))
         xlim = kwargs.get('xlim', None)
         ylim = kwargs.get('ylim', None)
         flux_offset = kwargs.get('flux_offset', 3e-15)
@@ -86,14 +98,15 @@ class fitspec:
                                 ylim=ylim,
                                 title=None,
                                 offset=None,
-                                figsize=(8., 6.),
-                                output=f'{self.OBJ_NAME}_{library}_comparison')
+                                figsize=figsize,
+                                output=f'{self.savename}_{library}_comparison')
         
     def compare_model(self, spec_length='short', wavel_range=(0.9, 1.9), teff_range=(2100., 2900.), av_range=np.arange(0,5, 0.1), **kwargs):
-        #kwargs:  xlim, ylim, flux_offset, label_pos
+        #kwargs:  xlim, ylim, flux_offset, label_pos, figsize
 
         xlim = kwargs.get('xlim', None)
         ylim = kwargs.get('ylim', None)
+        figsize=kwargs.get('figsize', (4, 3))
         flux_offset = kwargs.get('flux_offset', 3e-15)
         label_pos = kwargs.get('label_position', (1.6, 1.5e-14))
 
@@ -119,8 +132,8 @@ class fitspec:
                                 ylim=ylim,
                                 title=None,
                                 offset=None,
-                                figsize=(8., 6.),
-                                output=f'{self.OBJ_NAME}_btsettlcifistgrid_comparison',
+                                figsize=figsize,
+                                output=f'{self.savename}_btsettlcifistgrid_comparison',
                                 leg_param=['teff', 'logg', 'ism_ext', 'radius'])
         
     def mcmc_fitting(self, bounds, spec_length='short', n_live_points=2000, teff_range=(2100., 3600.)):
@@ -149,7 +162,7 @@ class fitspec:
                      title_fmt='.2f',
                      inc_luminosity=True,
                      inc_mass=False,
-                     output=f'{self.OBJ_NAME}_mcmc_posterior')
+                     output=f'{self.savename}_mcmc_posterior')
         
     def bestfit_samples(self):
         box_plotting = self.database.get_samples(tag=self.OBJ_NAME)
@@ -182,19 +195,16 @@ class fitspec:
         self.best = self.database.get_median_sample(tag=self.OBJ_NAME)
         read_model = ReadModel(model=self.model, wavel_range=None)
         self.modelbox = read_model.get_model(model_param=self.best,
-                                        spec_res=self.spec_res,
-                                        smooth=True)
+                                        spec_res=self.spec_res)
         objectbox = self.database.get_object(object_name=self.OBJ_NAME,
                                         inc_phot=False,
                                         inc_spec=[self.OBJ_NAME + '_' + spec_length])
         self.objectbox = update_objectbox(objectbox=objectbox, model_param=self.best)
-        self.residuals = get_residuals(datatype='model',
-                                tag = self.OBJ_NAME,
-                                spectrum=self.model,
-                                parameters=self.best,
-                                objectbox=objectbox,
-                                inc_phot=False,
-                                inc_spec=True)
+        self.residuals = get_residuals(tag = self.OBJ_NAME,
+                                       parameters=self.best,
+                                       objectbox=objectbox,
+                                       inc_phot=False,
+                                       inc_spec=True)
         return self.samples, self.best, self.modelbox, self.objectbox, self.residuals 
     
     def plot_bestmodel_residual(self, spec_length = 'full', **kwargs): 
@@ -218,8 +228,7 @@ class fitspec:
                             {'loc': 'upper right', 'frameon': False, 'fontsize': 12.}],
                     figsize=(8., 4.),
                     quantity='flux density',
-                    output=f'{self.OBJ_NAME}_mcmc_bestfit')
-        print(self.residuals.spectrum)
+                    output=f'{self.savename}_mcmc_bestfit')
         res_x = self.residuals.spectrum[self.OBJ_NAME + '_' + spec_length][:,0]
         res_y = self.residuals.spectrum[self.OBJ_NAME + '_' + spec_length][:,1]
         J_res = np.where((res_x > 0.95) & (res_x < 1.4))
@@ -237,17 +246,17 @@ class fitspec:
 
     
     def plot_bestmodel(self, obj, mod, spec_length='full', **kwargs):
-        # kwargs: savename, wave_unit, flux_unit, ylim, fontsize, plot_waterbands, plot_HI, normalize
+        # kwargs: wave_unit, flux_unit, ylim, fontsize, plot_waterbands, plot_HI, normalize
         figsize = kwargs.get('figsize', (10,3))
         wave_unit = kwargs.get('yunit', 'um')
-        flux_unit = kwargs.get('yunit', 'W/m2/um')
+        flux_unit = kwargs.get('yunit', 'W/(m2*um)')
         ylim = kwargs.get('ylim', [-1,10])
         xlim = kwargs.get('xlim', [0.9,2.5])
         ls = kwargs.get('fontsize', 12)
         normalize_value = kwargs.get('normalize_value', 1e-16)
         label = kwargs.get('label', 'TripleSpec')
 
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,3), dpi=150)
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, dpi=150)
         spec = [obj, mod]
         for j in np.arange(2):
             if j == 0:
@@ -258,7 +267,6 @@ class fitspec:
                 Wave = Wave[idx].astype('double')
                 Flux = Flux[idx].astype('double')
                 Error = Error[idx].astype('double')
-                print(Wave[-1])
             else:
                 Wave = spec[j].wavelength
                 Flux = spec[j].flux
@@ -298,8 +306,7 @@ class fitspec:
 
             else:
                 ax.plot(Wave[0:-10], Flux[0:-10]/normalize_value, color='k',  zorder=0, 
-                        label=r'BT SETTL 2015: T$_\mathrm{eff}$=' + f'{int(leg_vals["teff"])} K, log g = {round(leg_vals["logg"],1)}' + r', A$_\mathrm{V}$=' + f'{round(leg_vals["ext_av"],1)} mag')
-            print(j)
+                        label=r'BT SETTL 2015: $T_{\rm eff}$=' + f'{int(leg_vals["teff"])} K, log g = {round(leg_vals["logg"],1)}' + r', A$_{\rm V}$=' + f'{round(leg_vals["ext_av"],1)} mag')
 
         if kwargs.get('plot_HI'):
             ax.axvline(1.2822, color='gray', ymin=0.82, ymax=0.86, linewidth=1, linestyle='-')
@@ -355,8 +362,7 @@ class fitspec:
         
         ##############################################
 
-        if 'savename' in kwargs:
-            plt.savefig(kwargs['savename'], dpi=150)
+        plt.savefig(f'{self.savename}_bestfit.pdf', dpi=150)
         plt.show()
 
     def _compute_individual_error(self, bounds, spec_length='short', n_live_points=2000, teff_range=(2100., 3600.)):
@@ -416,7 +422,6 @@ class fitspec:
             Teff = self.modelbox.parameters["teff"]
 
         self.database.add_model(model=self.model, teff_range=teff_range)
-        print(bounds)
         Teff_plus_offset = Teff+100.
         Teff_minus_offset = Teff-100.
 
@@ -443,11 +448,11 @@ class fitspec:
         
         red = '#D81B60'
         blue = '#1E88E5'
-        labels=[r"T$_{eff}$ (K)", r"$R_p\ (R_J)$", r"parallax (mas)", r"$A_V$ (mag)", r"$\log L_p / L_\odot$"]
+        labels=[r"$T_{\rm eff}$ (K)", r"$R_p\ (R_J)$", r"parallax (mas)", r"$A_V$ (mag)", r"$\log L_p / L_\odot$"]
         figure = corner.corner(self.best_samples, labels=labels, quantiles=[0.5])
 
         axes = np.array(figure.axes).reshape((5, 5))
-        labels=[r"T$_{eff}$", r"$R_p$", r"$\varpi$", r"$A_V$", r"$\log L_p / L_\odot$"]
+        labels=[r"$T_{\rm eff}$", r"$R_p$", r"$\varpi$", r"$A_V$", r"$\log L_p / L_\odot$"]
         labelend = ["K", r"$R_J$", "mas", "mag", ""]
         for i, k in enumerate(list(plus_vals.keys())):
             ax = axes[i, i]
@@ -489,7 +494,7 @@ class fitspec:
                 if yi <4:
                     ax.set_xticklabels([])
         
-        labels= ['fit with $T_{eff} - 100$ K', 'best fit', 'fit with $T_{eff} + 100$ K']
+        labels= [r'fit with $T_{\rm eff} - 100$ K', 'best fit', r'fit with $T_{\rm eff} + 100$ K']
         colors = [blue, 'k', red]
         plt.legend(
                 handles=[
@@ -501,15 +506,14 @@ class fitspec:
             )
 
         plt.tight_layout()
-        plt.savefig(f'{self.OBJ_NAME}_posterior_error.png', dpi=150)
+        plt.savefig(f'{self.savename}_posterior_error.pdf', dpi=150)
         plt.show()
 
     def save_bestfit_model(self):
         best = self.database.get_median_sample(tag=self.OBJ_NAME)
         read_model = ReadModel(model=self.model, wavel_range=None)
         modelbox = read_model.get_model(model_param=best,
-                                        spec_res=self.spec_res,
-                                        smooth=True)
+                                        spec_res=self.spec_res)
     
         Wave = modelbox.wavelength
         Flux = modelbox.flux
@@ -519,8 +523,8 @@ class fitspec:
                     
         final_model = np.c_[Wave, Flux]
         leg_vals = modelbox.parameters
-        print('saving best fit model to: ', f'{self.OBJ_NAME}_BTSettl_bestfit_spectra_T{int(leg_vals["teff"])}_logg{round(leg_vals["logg"],1)}_Av{round(leg_vals["ext_av"],1)}.txt')
-        np.savetxt(f'{self.OBJ_NAME}_BTSettl_bestfit_spectra_T{int(leg_vals["teff"])}_logg{round(leg_vals["logg"],1)}_Av{round(leg_vals["ext_av"],1)}.txt', final_model)
+        print('saving best fit model to: ', f'{self.savename}_BTSettl_bestfit_spectra_T{int(leg_vals["teff"])}_logg{round(leg_vals["logg"],1)}_Av{round(leg_vals["ext_av"],1)}.txt')
+        np.savetxt(f'{self.savename}_BTSettl_bestfit_spectra_T{int(leg_vals["teff"])}_logg{round(leg_vals["logg"],1)}_Av{round(leg_vals["ext_av"],1)}.txt', final_model)
 
     def save_bestfit_parameters(self, plus_vals, minus_vals):
         name = []
@@ -536,6 +540,6 @@ class fitspec:
                 maxx.append(val[1])
         d = {'name': name, 'best_fit': value, 'err_lo':minn, 'err_hi':maxx}
         df = pd.DataFrame(d)
-        print('save best fit parameters to: ', f'{self.OBJ_NAME}_BTSettle_bestfit_parameters.csv')
-        df.to_csv(f'{self.OBJ_NAME}_BTSettle_bestfit_parameters.csv')            
+        print('save best fit parameters to: ', f'{self.savename}_BTSettl_bestfit_parameters.csv')
+        df.to_csv(f'{self.savename}_BTSettl_bestfit_parameters.csv')            
             
