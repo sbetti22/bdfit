@@ -8,7 +8,7 @@ To use the module, download or clone the repository above and install it with th
 ```
 $ git clone https://github.com/sbetti22/bdfit.git
 $ cd bdfit
-$ pip install .
+$ pip install -e .
 ````
 
 After installation, install ```species``` [https://species.readthedocs.io/en/latest/index.html](https://species.readthedocs.io/en/latest/index.html) and ```PyMultiNest``` [https://johannesbuchner.github.io/PyMultiNest/install.html#building-the-libraries](https://johannesbuchner.github.io/PyMultiNest/install.html#building-the-libraries) following their specific installation instructions.
