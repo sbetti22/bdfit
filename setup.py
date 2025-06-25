@@ -15,9 +15,11 @@ setup(name="bdfit",
         'License :: OSI Approved :: MIT License'
         ],
         keywords='NIR spectral fitting',
-        packages = find_packages(exclude=['example']),
+        packages = ['bdfit'],
         install_requires=[
         'numpy', 'scipy', 'astropy', 'matplotlib', 
         ], 
-        py_modules=['bdfit']
+        package_data={'bdfit': ['*']},
+        zip_safe=False
+        
         )
