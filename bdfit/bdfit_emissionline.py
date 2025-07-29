@@ -3,6 +3,7 @@ from species.data.database import Database
 from species.fit.emission_line import EmissionLine
 from species.plot.plot_mcmc import plot_posterior
 from species.util.model_util import gaussian_spectrum
+from species.read.read_object import ReadObject
 
 import os
 import corner
@@ -103,15 +104,110 @@ class bdfit_emissionline:
             raise ValueError(f'Line not found: please use either None or one of the following lines: {alcala_lines.Diagnostic.to_list()}')
         return a, aerr, b, berr
         
-    def measure_line_luminosity(self, line, wavel_range, integrate_line=True, fit_line=True , bounds = None, verbose=True):
-        line_analysis = EmissionLine(object_name=self.OBJ_NAME,
-                            spec_name=self.OBJ_NAME,
-                            hydrogen_line=line,
-                            lambda_rest=None,
-                            wavel_range=wavel_range)
+    def _sub_cont(self, species_emission_line, polyfit=3):
+        spec = species_emission_line.spectrum
+        center_wavelength = species_emission_line.lambda_rest
+        spec_extract = Spectrum1D(
+            flux=spec[:, 1] * u.W,
+            spectral_axis=spec[:, 0] * u.um,
+            uncertainty=StdDevUncertainty(spec[:, 2] * u.W),
+        )
+        xmin, xmax = spec_extract.spectral_axis[0], spec_extract.spectral_axis[-1]
+        region_cont = [SpectralRegion((center_wavelength-0.003)*u.um, (center_wavelength+0.003)*u.um)]
+
+        g1_fit = fit_generic_continuum(
+            spec_extract,
+            median_window=3,
+            model=Polynomial1D(polyfit),
+            fitter=LinearLSQFitter(), exclude_regions=region_cont
+        )
+        
+        continuum_fit = g1_fit(spec_extract.spectral_axis)
+        spec_cont_sub = spec_extract - continuum_fit
+        species_emission_line.continuum_flux = continuum_fit / u.W
+
+        plt.figure(figsize=(6, 6))
+        gs = mpl.gridspec.GridSpec(2, 1)
+        gs.update(wspace=0, hspace=0.1, left=0, right=1, bottom=0, top=1)
+
+        ax1 = plt.subplot(gs[0, 0])
+        ax2 = plt.subplot(gs[1, 0])
+        ax3 = ax1.twiny()
+        ax4 = ax2.twiny()
+        ax1.axvline(center_wavelength-0.003)
+        ax1.axvline(center_wavelength+0.003)
+        ax1.tick_params(axis="both", which="both", colors="black", labelcolor="black", direction="in", width=1, labelsize=12,top=False,bottom=True,left=True,right=True,labelbottom=False,)
+        ax2.tick_params(axis="both", which="both", colors="black", labelcolor="black", direction="in", width=1, labelsize=12,top=False,bottom=True,left=True,right=True,labelbottom=False,)
+        ax3.tick_params(axis="both", which="both", colors="black", labelcolor="black", direction="in", width=1, labelsize=12,top=True,bottom=False,left=True,right=True)
+        ax4.tick_params(axis="both", which="both", colors="black", labelcolor="black", direction="in", width=1, labelsize=12,top=True,bottom=False,left=True,right=True, labeltop=False,)
+
+        ax1.set_ylabel("Flux (W m$^{-2}$ µm$^{-1}$)", fontsize=16)
+        ax2.set_xlabel("Wavelength (µm)", fontsize=16)
+        ax2.set_ylabel("Flux (W m$^{-2}$ µm$^{-1}$)", fontsize=16)
+        ax3.set_xlabel("Velocity (km s$^{-1}$)", fontsize=16)
+
+        ax1.get_yaxis().set_label_coords(-0.1, 0.5)
+        ax2.get_xaxis().set_label_coords(0.5, -0.1)
+        ax2.get_yaxis().set_label_coords(-0.1, 0.5)
+        ax3.get_xaxis().set_label_coords(0.5, 1.12)
+
+        ax1.plot(
+            spec_extract.spectral_axis,
+            spec_extract.flux,
+            color="black",
+            label=species_emission_line.spec_name,
+        )
+        ax1.plot(
+            spec_extract.spectral_axis,
+            continuum_fit,
+            color="tab:blue",
+            label="SB Continuum fit",
+        )
+
+        ax2.plot(
+            spec_cont_sub.spectral_axis,
+            spec_cont_sub.flux,
+            color="black",
+            label="SB Continuum subtracted",
+        )
+
+        ax3.plot(species_emission_line.spec_vrad, spec_extract.flux, ls="-", lw=0.0)
+        ax4.plot(species_emission_line.spec_vrad, spec_cont_sub.flux, ls="-", lw=0.0)
+
+        ax1.legend(loc="upper right", frameon=False, fontsize=12.0)
+        ax2.legend(loc="upper right", frameon=False, fontsize=12.0)
+
+        print(" [DONE]")
+
+       
+        plt.show()
+    
+        # Overwrite original spectrum with continuum-subtracted spectrum
+        species_emission_line.spectrum[:, 1] = spec_cont_sub.flux
+
+        species_emission_line.continuum_check = True
+        return species_emission_line
+
+    def measure_line_luminosity(self, line, wavel_range, integrate_line=True, fit_line=True , bounds = None, verbose=True, polyfit=3):
+        if line == 'HeI':
+            lambda_rest = hydrogen_lines('HeI')
+            line_analysis = EmissionLine(object_name=self.OBJ_NAME,
+                                spec_name=self.OBJ_NAME,
+                                hydrogen_line=None,
+                                lambda_rest=lambda_rest,
+                                wavel_range=wavel_range)
+        else:
+            line_analysis = EmissionLine(object_name=self.OBJ_NAME,
+                                spec_name=self.OBJ_NAME,
+                                hydrogen_line=line,
+                                lambda_rest=None,
+                                wavel_range=wavel_range)
                 
-        line_analysis.subtract_continuum(poly_degree=3,
-                                        plot_filename=None)
+
+        line_analysis = self._sub_cont(line_analysis, polyfit=polyfit)
+
+        # line_analysis.subtract_continuum(poly_degree=polyfit,
+        #                                 plot_filename=None)
         
         if integrate_line:
             lineflux, lineflux_err, logLline, logLlineerr = line_analysis.integrate_flux(wavel_int=self.line_range(line),
@@ -284,11 +380,11 @@ class bdfit_emissionline:
         return d[line]
 
     
-    def run_measure_object(self, line, wavel_range, fit_line=True, integrate_line=False, upper_limit=False, bounds=None, deltalambda=None, verbose=True):
+    def run_measure_object(self, line, wavel_range, fit_line=True, integrate_line=False, upper_limit=False, bounds=None, deltalambda=None, verbose=True, polyfit=3):
         if upper_limit:
             self.upper_limit_derivation(line, wavel_range, deltalambda, verbose=verbose)
         else:
-            self.measure_line_luminosity(line, wavel_range, fit_line=fit_line, integrate_line=integrate_line, bounds=bounds, verbose=verbose)
+            self.measure_line_luminosity(line, wavel_range, fit_line=fit_line, integrate_line=integrate_line, bounds=bounds, verbose=verbose, polyfit=polyfit)
 
             self.measure_accretion_luminosity(line, verbose=verbose)
             
@@ -332,7 +428,7 @@ class bdfit_emissionline:
         SS2 = extract_region(spec, region)   
         SS2flux = SS2.flux.value 
         local_cont_mean = np.nanmean(SS2flux)
-        local_cont_std = np.nanstd(SS2flux) 
+        local_cont_std = np.nanstd(SS2flux)/10000
 
         real_center_wavelength = hydrogen_lines(line) * u.um
         region_line = SpectralRegion((real_center_wavelength-0.00035*u.um), (real_center_wavelength+0.00035*u.um))
