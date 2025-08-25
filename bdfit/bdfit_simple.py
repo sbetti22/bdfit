@@ -44,7 +44,6 @@ def run_bdfit_mcmc(OBJ_NAME, PARALLAX, PARALLAX_err, specfile_full_name,
 
     database.add_object(OBJ_NAME,
                             parallax=(PARALLAX, PARALLAX_err),
-                            app_mag=None,
                             flux_density=None,
                             spectrum={f'{OBJ_NAME}': (specfile_full_name, None, spec_res),},
                             deredden=None)
@@ -65,13 +64,13 @@ def run_bdfit_mcmc(OBJ_NAME, PARALLAX, PARALLAX_err, specfile_full_name,
                 output='multinest/',
                 kwargs_multinest=None)
 
-    if error == False:
-        fig = plot_posterior(tag=OBJ_NAME,
-                        offset=(-0.3 , -0.3),
-                        title_fmt='.2f',
-                        inc_luminosity=True,
-                        inc_mass=False,
-                        output=f'{save_name}_mcmc_posterior')
+
+    fig = plot_posterior(tag=OBJ_NAME,
+                    offset=(-0.3 , -0.3),
+                    title_fmt='.2f',
+                    inc_luminosity=True,
+                    inc_mass=False,
+                    output=f'{save_name}_mcmc_posterior')
         
 
     box_plotting = database.get_samples(tag=OBJ_NAME)
@@ -118,70 +117,139 @@ def run_bdfit_mcmc(OBJ_NAME, PARALLAX, PARALLAX_err, specfile_full_name,
     np.savetxt(f'{save_name}_BTSettl_bestfit_model.txt', final_model)
         
     _plot_bestmodel_residual(OBJ_NAME, modelbox, objectbox, residuals, save_name=save_name,  **kwargs)
-
+    
     # ##### error ####
-    if error:
-        Teff = modelbox.parameters["teff"]
+    # if error:
+    #     Teff = modelbox.parameters["teff"]
 
-        Teff_plus_offset = Teff+100.
-        Teff_minus_offset = Teff-100.
+    #     Teff_plus_offset = Teff+100.
+    #     Teff_minus_offset = Teff-100.
 
-        bounds_pos = bounds.copy()
-        bounds_min = bounds.copy()
+    #     bounds_pos = bounds.copy()
+    #     bounds_min = bounds.copy()
 
-        if (Teff_plus_offset != bounds['teff'][0]) & (Teff_plus_offset != bounds['teff'][1]):
-            print(f'>>> changing bound["teff"] from {bounds["teff"]} to {(Teff_plus_offset, Teff_plus_offset)}')
+    #     if (Teff_plus_offset != bounds['teff'][0]) & (Teff_plus_offset != bounds['teff'][1]):
+    #         print(f'>>> changing bound["teff"] from {bounds["teff"]} to {(Teff_plus_offset, Teff_plus_offset)}')
 
-        bounds_pos['teff'] = (Teff_plus_offset, Teff_plus_offset)
-        bounds_pos['logg'] = (modelbox.parameters["logg"], modelbox.parameters["logg"])
-        fit_plus = FitModel(object_name=OBJ_NAME, model=model, bounds=bounds_pos, inc_phot=False, inc_spec=[OBJ_NAME], fit_corr=None, apply_weights=False, ext_model='CCM89')  
-        fit_plus.run_multinest(tag=OBJ_NAME+'_plus', n_live_points=n_live_points, resume=False, output='multinest/', kwargs_multinest=None)
-        plus_samples, plus_vals = _compute_individual_error(database, OBJ_NAME+'_plus', best)
-
-        if (Teff_minus_offset != bounds['teff'][0]) & (Teff_minus_offset != bounds['teff'][1]):
-            print(f'changing bound["teff"] from {bounds["teff"]} to {(Teff_minus_offset, Teff_minus_offset)}')
-        bounds_min['teff'] = (Teff_minus_offset, Teff_minus_offset)
-        bounds_min['logg'] = (modelbox.parameters["logg"], modelbox.parameters["logg"])
-        fit_minus = FitModel(object_name=OBJ_NAME, model=model, bounds=bounds_min, inc_phot=False, inc_spec=[OBJ_NAME], fit_corr=None, apply_weights=False, ext_model='CCM89')  
-        fit_minus.run_multinest(tag=OBJ_NAME+'_minus', n_live_points=n_live_points, resume=False, output='multinest/', kwargs_multinest=None)
-        minus_samples, minus_vals = _compute_individual_error(database, OBJ_NAME+'_minus', best)
-
-        _plot_error_corner(best_samples, plus_samples, plus_vals, minus_samples, minus_vals, Teff, save_name)
-
-        name = []
-        value = []
-        minn = []
-        maxx = []
-        for key, val in plus_vals.items():
-            if key != 'parallax':
-                name.append(key)
-                value.append(val[0])
-                minn.append(minus_vals[key][1])
-                maxx.append(val[1])
-        name.append('chi2')
-        value.append(residuals.chi2_red)
-        minn.append(np.nan)
-        maxx.append(np.nan)
-        d = {'name': name, 'best_fit': value, 'err_lo':minn, 'err_hi':maxx}
-        df = pd.DataFrame(d)
-        print('save best fit parameters to: ', f'{save_name}_BTSettl_bestfit_parameters.csv')
-        df.to_csv(f'{save_name}_BTSettl_bestfit_parameters.csv') 
-        # display(df)    
-    else:
-        #### save best params no error #### 
-        name = []
-        value = []
-        for i in np.arange(len(params_plotting)):
-            name.append(params_plotting[i])
-            value.append(corner.quantile(best_samples[:,i], [0.5])[0])
-        name.append('chi2')
-        value.append(residuals.chi2_red)
-        df = pd.DataFrame({'name': name, 'best_fit': value})
-        print('save best fit parameters to: ', f'{save_name}_BTSettl_bestfit_parameters.csv')
-        df.to_csv(f'{save_name}_BTSettl_bestfit_parameters.csv')   
-        # display(df)   
-    return df        
+    #     bounds_pos['teff'] = (Teff_plus_offset, Teff_plus_offset)
+    #     bounds_pos['logg'] = (modelbox.parameters["logg"]-0.5, modelbox.parameters["logg"]-0.5)
+    #     fit_plus = FitModel(object_name=OBJ_NAME, model=model, bounds=bounds_pos, inc_phot=False, inc_spec=[OBJ_NAME], fit_corr=None, apply_weights=False, ext_model='CCM89')  
+    #     fit_plus.run_multinest(tag=OBJ_NAME+'_plus', n_live_points=n_live_points, resume=False, output='multinest/', kwargs_multinest=None)
+    #     plus_samples, plus_vals = _compute_individual_error(database, OBJ_NAME+'_plus', best)
         
+       
+    #     if (Teff_minus_offset != bounds['teff'][0]) & (Teff_minus_offset != bounds['teff'][1]):
+    #         print(f'changing bound["teff"] from {bounds["teff"]} to {(Teff_minus_offset, Teff_minus_offset)}')
+    #     bounds_min['teff'] = (Teff_minus_offset, Teff_minus_offset)
+    #     bounds_min['logg'] = (modelbox.parameters["logg"]+0.5, modelbox.parameters["logg"]+0.5)
+    #     fit_minus = FitModel(object_name=OBJ_NAME, model=model, bounds=bounds_min, inc_phot=False, inc_spec=[OBJ_NAME], fit_corr=None, apply_weights=False, ext_model='CCM89')  
+    #     fit_minus.run_multinest(tag=OBJ_NAME+'_minus', n_live_points=n_live_points, resume=False, output='multinest/', kwargs_multinest=None)
+    #     minus_samples, minus_vals = _compute_individual_error(database, OBJ_NAME+'_minus', best)
+       
+
+    #     _plot_error_corner(best_samples, plus_samples, plus_vals, minus_samples, minus_vals, Teff, save_name)
+
+    #     name = []
+    #     value = []
+    #     minn = []
+    #     maxx = []
+    #     for key, val in plus_vals.items():
+    #         if key != 'parallax':
+    #             name.append(key)
+    #             value.append(val[0])
+    #             minn.append(minus_vals[key][1])
+    #             maxx.append(val[1])
+    #     name.append('chi2')
+    #     value.append(residuals.chi2_red)
+    #     minn.append(np.nan)
+    #     maxx.append(np.nan)
+    #     d = {'name': name, 'best_fit': value, 'err_lo':minn, 'err_hi':maxx}
+    #     df = pd.DataFrame(d)
+    #     print('save best fit parameters to: ', f'{save_name}_BTSettl_bestfit_parameters.csv')
+    #     df.to_csv(f'{save_name}_BTSettl_bestfit_parameters.csv') 
+    #     # display(df)    
+    # else:
+    #     #### save best params no error #### 
+    name = []
+    value = []
+    best_vals = {}
+    for i in np.arange(len(params_plotting)):
+        name.append(params_plotting[i])
+        value.append(corner.quantile(best_samples[:,i], [0.5])[0])
+        best_vals[params_plotting[i]] = corner.quantile(best_samples[:,i], [0.5])[0]
+    name.append('chi2')
+    value.append(residuals.chi2_red)
+    df = pd.DataFrame({'name': name, 'best_fit': value})
+    print('save best fit parameters to: ', f'{save_name}_BTSettl_bestfit_parameters.csv')
+    df.to_csv(f'{save_name}_BTSettl_bestfit_parameters.csv')   
+
+    Teff = modelbox.parameters["teff"]
+    _plot_corner(best_samples, best_vals, Teff, save_name) 
+    return df        
+  
+
+def _plot_corner(best_samples, best_vals, Teff, save_name):
+    print(best_vals)
+    print('best fit Teff = ', Teff)
+
+    if np.shape(best_samples)[1] == 8:
+        axislabels=[r"$T_{\rm eff}$ (K)", 'log g', r"$R_p\ (R_J)$", r"parallax (mas)", 'disk teff', 'disk radius', r"$A_V$ (mag)", r"$\log L_p / L_\odot$"]
+        labels=[r"$T_{\rm eff}$", 'log g', r"$R_p$", r"$\varpi$", 'Tdisk', 'Rdisk', r"$A_V$", r"$\log L_p / L_\odot$"]
+        labelend = ["K", "", r"$R_J$", "mas", "K", r"$R_J$", "mag", ""]
+    else:
+        axislabels=[r"$T_{\rm eff}$ (K)", 'log g', r"$R_p\ (R_J)$", r"parallax (mas)",  r"$A_V$ (mag)", r"$\log L_p / L_\odot$"]
+        labels=[r"$T_{\rm eff}$", 'logg', r"$R_p$", r"$\varpi$", r"$A_V$", r"$\log L_p / L_\odot$"]
+        labelend = ["K", '', r"$R_J$", "mas", "mag", ""]
+
+    minlim = []
+    maxlim = []
+    fig, axes = plt.subplots(nrows=len(labels), ncols=len(labels), figsize=(14,14))
+    for yi in np.arange(len(labels)):
+        for xi in np.arange(yi+1):
+            if yi > xi:
+                axes[xi, yi].axis('off')
+    for i, k in enumerate(list(best_vals.keys())):
+        ax = axes[i, i]
+        ax.hist(best_samples[:,i], bins=20, color='k', histtype='step')
+        ax.axvline(best_vals[k], color='k', linestyle='--')
+        ax.set_title(labels[i] + '$=$' + str(round(best_vals[k],2)) + ' ' + labelend[i])
+        
+        minn = min(best_samples[:,i])
+        maxx = max(best_samples[:,i])
+        minlim.append(minn)
+        maxlim.append(maxx)
+
+
+    for yi in np.arange(len(labels)):
+        for xi in np.arange(yi):
+            ax = axes[yi, xi]
+            corner.hist2d(best_samples[:, xi],best_samples[:, yi], ax=ax, color='k')
+
+    for yi in np.arange(len(labels)):
+        for xi in np.arange(yi+1):
+            ax = axes[yi, xi] # y goes across, x goes up
+            if xi == yi:
+                ax.set_xlim(minlim[yi], maxlim[yi])
+
+            else:
+                ax.set_xlim(minlim[xi], maxlim[xi])
+                ax.set_ylim(minlim[yi], maxlim[yi])
+                
+            if (xi > 0):  
+                ax.set_yticklabels([])
+            if yi <= len(labels)-2:
+                ax.set_xticklabels([])
+                
+            if xi == 0:
+                ax.set_ylabel(axislabels[yi])
+            if yi == len(labels)-1:
+                ax.set_xlabel(axislabels[xi])
+            
+    plt.tight_layout()
+    plt.savefig(f'{save_name}_posteriorV2.pdf', dpi=150)
+    plt.clf()
+    # plt.show()
+
 def _plot_error_corner(best_samples, plus_samples, plus_vals, minus_samples, minus_vals, Teff, save_name):
     print('best fit Teff = ', Teff)
     
@@ -209,7 +277,7 @@ def _plot_error_corner(best_samples, plus_samples, plus_vals, minus_samples, min
         ax.axvline(plus_vals[k][0], color='k', linestyle='--')
         ax.set_title(labels[i] + '$=$' + str(round(plus_vals[k][0],2)) + '$^{+' + str(round(plus_vals[k][1],2)) + '}_{-' + str(round(minus_vals[k][1],2)) + '}$ ' + labelend[i])
         if i > 1:
-            if np.nanmedian(plus_samples[:,1]) < np.nanmedian(minus_samples[:,i]):
+            if np.nanmedian(plus_samples[:,i]) < np.nanmedian(minus_samples[:,i]):
                 ax.axvline(plus_vals[k][0]-plus_vals[k][1], color=red, linestyle='--')
                 ax.axvline(plus_vals[k][0]+minus_vals[k][1], color=blue, linestyle='--')
             else:
@@ -312,7 +380,6 @@ def _compute_individual_error(database, tag, best):
         VALS['logg'] = [best['logg'], 0.5]
         for i in np.arange(ndim):
             q_16, q_50, q_84 = corner.quantile(samples0[:, i], [0.16, 0.5, 0.84])
-
             best_val = best[params[i]]
             if best_val > q_50:
                 err = best_val - q_16  
@@ -334,7 +401,8 @@ def _compute_individual_error(database, tag, best):
 def _plot_bestmodel_residual(OBJ_NAME, modelbox, objectbox, residuals, save_name=None,  **kwargs): 
 
     #kwargs: xlim, ylim, label
-    ylim = kwargs.get('ylim', (-1.15e-16, 3e-14))
+    maxx = 2*np.max(modelbox.flux)
+    ylim = kwargs.get('ylim', (-1.15e-16, maxx))
     xlim = kwargs.get('xlim', (0.8, 2.5))
     label = kwargs.get('label', 'TripleSpec')
 
@@ -345,6 +413,7 @@ def _plot_bestmodel_residual(OBJ_NAME, modelbox, objectbox, residuals, save_name
                                 {OBJ_NAME:{'ls':'-', 'color':'blue', 'label':label}}],
                 xlim=xlim,
                 ylim=ylim,
+                object_type='star',
                 ylim_res=(-10., 10.),
                 scale=('linear', 'linear'),
                 offset=(-0.4, -0.05),
@@ -374,10 +443,12 @@ def plot_bestmodel(object_path, model_path, save_name, **kwargs):
     figsize = kwargs.get('figsize', (10,3))
     wave_unit = kwargs.get('yunit', 'um')
     flux_unit = kwargs.get('yunit', 'W/(m2*um)')
-    ylim = kwargs.get('ylim', [-1,10])
+    normalize_value = kwargs.get('normalize_value', 1e-16)
+    maxx = np.max(np.loadtxt(model_path)[:,1]/normalize_value) + (np.min(np.loadtxt(model_path)[:,1]/normalize_value)/2)
+    ylim = kwargs.get('ylim', [-1,maxx])
     xlim = kwargs.get('xlim', [0.9,2.5])
     ls = kwargs.get('fontsize', 12)
-    normalize_value = kwargs.get('normalize_value', 1e-16)
+    
     label = kwargs.get('label', 'TripleSpec')
 
     obj = np.loadtxt(object_path)

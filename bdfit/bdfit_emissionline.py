@@ -180,7 +180,7 @@ class bdfit_emissionline:
         print(" [DONE]")
 
        
-        plt.show()
+        # plt.show()
     
         # Overwrite original spectrum with continuum-subtracted spectrum
         species_emission_line.spectrum[:, 1] = spec_cont_sub.flux
@@ -231,7 +231,7 @@ class bdfit_emissionline:
                             title_fmt='.2f',
                             offset=(-0.4, -0.35), object_type='star',
                             output= f'{self.save_name}_{line}_fitting_posterior.pdf')
-            plt.show()
+            # plt.show()
             best = self.database.get_median_sample(tag=line)
 
             amp = best['gauss_amplitude']
@@ -250,12 +250,12 @@ class bdfit_emissionline:
                 os.remove(f'{self.save_name}_{line}_bestfit_gaussian.txt')
             np.savetxt(f'{self.save_name}_{line}_bestfit_gaussian.txt', np.c_[best_model.wavelength, best_model.flux])
 
-            plt.figure()
-            plt.plot(line_analysis.spectrum[:,0], line_analysis.spectrum[:,1], 'k')
-            plt.plot(best_model.wavelength, best_model.flux, 'b')
-            plt.xlabel('wavelength (μm)')
-            plt.ylabel('flux (W/m2/um)')
-            plt.show()
+            # plt.figure()
+            # plt.plot(line_analysis.spectrum[:,0], line_analysis.spectrum[:,1], 'k')
+            # plt.plot(best_model.wavelength, best_model.flux, 'b')
+            # plt.xlabel('wavelength (μm)')
+            # plt.ylabel('flux (W/m2/um)')
+            # plt.show()
 
             lineflux = best['line_flux']
             logLline = best['log_line_lum']
@@ -487,7 +487,8 @@ class bdfit_emissionline:
         ax1.get_xaxis().set_label_coords(0.5, -0.12)
         ax1.get_yaxis().set_label_coords(-0.1, 0.5)
         ax2.get_xaxis().set_label_coords(0.5, 1.12)
-        plt.show()
+        plt.savefig(f'{self.save_name}_{line}_upperlimit.pdf')
+        # plt.show()
 
         if verbose:
             print('Line Flux < ', LineFlux_upp*u.W/u.m**2.)
@@ -557,7 +558,7 @@ def indiv_plots(fil, PaBspec, PaGspec, BrGspec, xunit, yunit, fs=12,
     ax.tick_params(which='minor', direction='in', labelsize=fs, right=True, top=True, length=5)
     ax.minorticks_on()
 
-    ylimspec = kwargs.get('ylimspec', [0,10])
+    ylimspec = kwargs.get('ylimspec', [0,np.nanmax(fluxnorm)])
     ax.set_xlim(0.92, 2.5)
     ax.set_ylim(ylimspec[0], ylimspec[1])
     ax.set_ylabel(r'Flux (10$^{-16}$ erg/s/cm$^2$/$\AA$)', fontsize=fs)
