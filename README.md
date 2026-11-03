@@ -1,4 +1,7 @@
-# bdfit [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23904789.svg)](https://doi.org/10.5281/zenodo.23904789)
+# bdfit 
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23904789.svg)](https://doi.org/10.5281/zenodo.23904789)
+
 bdbit is a spectral fitting routine for low resolution brown dwarf NIR spectra using the species package 
 
 author: Sarah Betti
